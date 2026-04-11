@@ -100,12 +100,49 @@ public class TruffulaOptions  {
    * @throws IllegalArgumentException if unknown arguments are provided or the path is missing
    * @throws FileNotFoundException if the directory cannot be found or if the path points to a file
    */
-  public TruffulaOptions(String[] args) throws IllegalArgumentException, FileNotFoundException {
-    // TODO: Replace the below lines with your implementation
-    root = null;
-    showHidden = false;
-    useColor = false;
+    public TruffulaOptions(String[] args) throws IllegalArgumentException, FileNotFoundException {
+      // TODO: Replace the below lines with your implementation
+      // System.out.println(args[2]);
+
+      // Validate input
+      if (args == null || args.length > 3 || args.length == 0) throw new IllegalArgumentException();
+
+      // Initialize variables to track argument options
+      Boolean bShowHidden = false;
+      Boolean bUseColor = true;
+      String path = args[args.length - 1];
+
+      
+      // Read options from args
+      if (args.length != 1) {
+        for (int i = 0; i < args.length - 1; i++) {
+          String x = args[i];
+
+          // Validate flag
+          if (!x.equals("-h") && !x.equals("-nc")) {
+            throw new IllegalArgumentException();
+          }
+
+          if (x.equals("-h")) bShowHidden = true;
+          if (x.equals("-nc")) bUseColor = false;
+        }
+      }
+      // Check path validity
+      File directory = new File(path);
+      if (!directory.exists() || !directory.isDirectory()) throw new FileNotFoundException();
+      
+      // Update final variables
+      showHidden = bShowHidden;
+      useColor = bUseColor;
+      root = directory;
+      // System.out.println("" + showHidden + useColor + path);
   }
+
+  // public static void main(String[] args) throws FileNotFoundException {
+  //   String[] argss = {"-h", "directoryPath"};
+  //   // Act: Create TruffulaOptions instance
+  //   TruffulaOptions options = new TruffulaOptions(argss);
+  // }
 
   /**
    * Constructs a TruffulaOptions object with explicit values.

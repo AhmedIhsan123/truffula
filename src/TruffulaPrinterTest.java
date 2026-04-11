@@ -149,4 +149,112 @@ public class TruffulaPrinterTest {
         // Assert that the output matches the expected output exactly
         assertEquals(expected.toString(), output);
     }
+
+    @Test
+    void testPrintTree_SimpleStructure(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        root.mkdir();
+
+        new File(root, "a.txt").createNewFile();
+        new File(root, "b.txt").createNewFile();
+
+        TruffulaOptions options = new TruffulaOptions(root, false, true);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+
+        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
+
+        printer.printTree();
+
+        String output = baos.toString();
+
+        // Root must be printed
+        assertTrue(output.contains("root/"));
+
+        // Files must be present (order not guaranteed)
+        assertTrue(output.contains("   a.txt"));
+        assertTrue(output.contains("   b.txt"));
+
+        // Debug lines from your implementation
+        assertTrue(output.contains("printTree was called!"));
+    }
+
+    @Test
+    void testPrintTree_NestedStructure(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        root.mkdir();
+
+        File sub = new File(root, "sub");
+        sub.mkdir();
+
+        File inner = new File(sub, "inner");
+        inner.mkdir();
+
+        new File(inner, "file.txt").createNewFile();
+
+        TruffulaOptions options = new TruffulaOptions(root, false, true);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+
+        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
+
+        printer.printTree();
+
+        String output = baos.toString();
+
+        assertTrue(output.contains("root/"));
+        assertTrue(output.contains("   sub/"));
+        assertTrue(output.contains("      inner/"));
+        assertTrue(output.contains("         file.txt"));
+    }
+
+    @Test
+    void testPrintTree_EmptyDirectory(@TempDir File tempDir) {
+        File root = new File(tempDir, "empty");
+        root.mkdir();
+
+        TruffulaOptions options = new TruffulaOptions(root, false, true);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+
+        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
+
+        printer.printTree();
+
+        String output = baos.toString();
+
+        // Only root should appear (plus debug lines)
+        assertTrue(output.contains("empty/"));
+    }
+
+    @Test
+    void testPrintTree_FilesAndDirectories(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        root.mkdir();
+
+        File dir = new File(root, "folder");
+        dir.mkdir();
+
+        new File(root, "file.txt").createNewFile();
+        new File(dir, "nested.txt").createNewFile();
+
+        TruffulaOptions options = new TruffulaOptions(root, false, true);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+
+        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
+
+        printer.printTree();
+
+        String output = baos.toString();
+
+        assertTrue(output.contains("root/"));
+        assertTrue(output.contains("   folder/"));
+        assertTrue(output.contains("      nested.txt"));
+        assertTrue(output.contains("   file.txt"));
+    }
 }

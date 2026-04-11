@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.PrintStream;
 import java.util.List;
 
@@ -105,14 +106,38 @@ public class TruffulaPrinter {
   public void printTree() {
     // TODO: Implement this!
     // REQUIRED: ONLY use java.io, DO NOT use java.nio
+    StringBuilder finalStr = new StringBuilder();
+    File root = options.getRoot();
+
+    // Print root
+    finalStr.append(root.getName()).append("/").append("\n");
+
+    // Start recursion
+    printTreeHelper(root, "   ", finalStr);
+
+    System.out.print(finalStr.toString());
     
     // Hints:
     // - Add a recursive helper method
     // - For Wave 6: Use AlphabeticalFileSorter
     // DO NOT USE SYSTEM.OUT.PRINTLN
     // USE out.println instead (will use your ColorPrinter)
-
+    out.println(finalStr.toString());
     out.println("printTree was called!");
     out.println("My options are: " + options);
+  }
+
+  private void printTreeHelper(File dir, String spacing, StringBuilder finalStr) {
+    File[] files = dir.listFiles();
+    if (files == null) return;
+    for (File file : files) {
+      if (file.isDirectory()) {
+        finalStr.append(spacing).append(file.getName()).append("/").append("\n");
+        // Recursive call with more spacing
+        printTreeHelper(file, spacing + "   ", finalStr);
+      } else {
+        finalStr.append(spacing).append(file.getName()).append("\n");
+      }
+    }
   }
 }

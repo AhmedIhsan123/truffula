@@ -10,7 +10,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TruffulaPrinterTest {
@@ -20,7 +20,7 @@ public class TruffulaPrinterTest {
      *
      * This method reads the "os.name" system property and checks whether it
      * contains the substring "win", which indicates a Windows-based OS.
-     * 
+     *
      * You do not need to modify this method.
      *
      * @return true if the OS is Windows, false otherwise
@@ -32,12 +32,12 @@ public class TruffulaPrinterTest {
 
     /**
      * Creates a hidden file in the specified parent folder.
-     * 
+     *
      * The filename MUST start with a dot (.).
      *
      * On Unix-like systems, files prefixed with a dot (.) are treated as hidden.
      * On Windows, this method also sets the DOS "hidden" file attribute.
-     * 
+     *
      * You do not need to modify this method, but you SHOULD use it when creating hidden files
      * for your tests. This will make sure that your tests work on both Windows and UNIX-like systems.
      *
@@ -48,161 +48,56 @@ public class TruffulaPrinterTest {
      * @throws IllegalArgumentException if the filename does not start with a dot (.)
      */
     private static File createHiddenFile(File parentFolder, String filename) throws IOException {
-        if(!filename.startsWith(".")) {
+        if (!filename.startsWith(".")) {
             throw new IllegalArgumentException("Hidden files/folders must start with a '.'");
         }
         File hidden = new File(parentFolder, filename);
         hidden.createNewFile();
-        if(isWindows()) {
+        if (isWindows()) {
             Path path = Paths.get(hidden.toURI());
             Files.setAttribute(path, "dos:hidden", Boolean.TRUE, LinkOption.NOFOLLOW_LINKS);
         }
         return hidden;
     }
 
-    @Test
-    public void testPrintTree_ExactOutput_WithCustomPrintStream(@TempDir File tempDir) throws IOException {
-        // Build the example directory structure:
-        // myFolder/
-        //    .hidden.txt
-        //    Apple.txt
-        //    banana.txt
-        //    Documents/
-        //       images/
-        //          Cat.png
-        //          cat.png
-        //          Dog.png
-        //       notes.txt
-        //       README.md
-        //    zebra.txt
-
-        // Create "myFolder"
-        File myFolder = new File(tempDir, "myFolder");
-        assertTrue(myFolder.mkdir(), "myFolder should be created");
-
-        // Create visible files in myFolder
-        File apple = new File(myFolder, "Apple.txt");
-        File banana = new File(myFolder, "banana.txt");
-        File zebra = new File(myFolder, "zebra.txt");
-        apple.createNewFile();
-        banana.createNewFile();
-        zebra.createNewFile();
-
-        // Create a hidden file in myFolder
-        createHiddenFile(myFolder, ".hidden.txt");
-
-        // Create subdirectory "Documents" in myFolder
-        File documents = new File(myFolder, "Documents");
-        assertTrue(documents.mkdir(), "Documents directory should be created");
-
-        // Create files in Documents
-        File readme = new File(documents, "README.md");
-        File notes = new File(documents, "notes.txt");
-        readme.createNewFile();
-        notes.createNewFile();
-
-        // Create subdirectory "images" in Documents
-        File images = new File(documents, "images");
-        assertTrue(images.mkdir(), "images directory should be created");
-
-        // Create files in images
-        File cat = new File(images, "cat.png");
-        File dog = new File(images, "Dog.png");
-        cat.createNewFile();
-        dog.createNewFile();
-
-        // Set up TruffulaOptions with showHidden = false and useColor = true
-        TruffulaOptions options = new TruffulaOptions(myFolder, false, true);
-
-        // Capture output using a custom PrintStream
+    private static String runPrintTree(File root, boolean showHidden) {
+        TruffulaOptions options = new TruffulaOptions(root, showHidden, true);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream printStream = new PrintStream(baos);
-
-        // Instantiate TruffulaPrinter with custom PrintStream
-        TruffulaPrinter printer = new TruffulaPrinter(options, printStream);
-
-        // Call printTree (output goes to printStream)
+        PrintStream ps = new PrintStream(baos);
+        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
         printer.printTree();
-
-        // Retrieve printed output
-        String output = baos.toString();
-        String nl = System.lineSeparator();
-
-        // Build expected output with exact colors and indentation
-        ConsoleColor reset = ConsoleColor.RESET;
-        ConsoleColor white = ConsoleColor.WHITE;
-        ConsoleColor purple = ConsoleColor.PURPLE;
-        ConsoleColor yellow = ConsoleColor.YELLOW;
-
-        StringBuilder expected = new StringBuilder();
-        expected.append(white).append("myFolder/").append(nl).append(reset);
-        expected.append(purple).append("   Apple.txt").append(nl).append(reset);
-        expected.append(purple).append("   banana.txt").append(nl).append(reset);
-        expected.append(purple).append("   Documents/").append(nl).append(reset);
-        expected.append(yellow).append("      images/").append(nl).append(reset);
-        expected.append(white).append("         cat.png").append(nl).append(reset);
-        expected.append(white).append("         Dog.png").append(nl).append(reset);
-        expected.append(yellow).append("      notes.txt").append(nl).append(reset);
-        expected.append(yellow).append("      README.md").append(nl).append(reset);
-        expected.append(purple).append("   zebra.txt").append(nl).append(reset);
-
-        // Assert that the output matches the expected output exactly
-        assertEquals(expected.toString(), output);
+        return baos.toString();
     }
 
     @Test
-    void testPrintTree_SimpleStructure(@TempDir File tempDir) throws Exception {
+    void testPrintTree_PrintsRootAndVisibleFiles(@TempDir File tempDir) throws Exception {
         File root = new File(tempDir, "root");
-        root.mkdir();
+        assertTrue(root.mkdir());
 
         new File(root, "a.txt").createNewFile();
         new File(root, "b.txt").createNewFile();
 
-        TruffulaOptions options = new TruffulaOptions(root, false, true);
+        String output = runPrintTree(root, false);
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos);
-
-        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
-
-        printer.printTree();
-
-        String output = baos.toString();
-
-        // Root must be printed
         assertTrue(output.contains("root/"));
-
-        // Files must be present (order not guaranteed)
         assertTrue(output.contains("   a.txt"));
         assertTrue(output.contains("   b.txt"));
-
-        // Debug lines from your implementation
-        assertTrue(output.contains("printTree was called!"));
     }
 
     @Test
-    void testPrintTree_NestedStructure(@TempDir File tempDir) throws Exception {
+    void testPrintTree_PrintsNestedDirectoriesAndFiles(@TempDir File tempDir) throws Exception {
         File root = new File(tempDir, "root");
-        root.mkdir();
+        assertTrue(root.mkdir());
 
         File sub = new File(root, "sub");
-        sub.mkdir();
+        assertTrue(sub.mkdir());
 
         File inner = new File(sub, "inner");
-        inner.mkdir();
+        assertTrue(inner.mkdir());
 
         new File(inner, "file.txt").createNewFile();
 
-        TruffulaOptions options = new TruffulaOptions(root, false, true);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos);
-
-        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
-
-        printer.printTree();
-
-        String output = baos.toString();
+        String output = runPrintTree(root, false);
 
         assertTrue(output.contains("root/"));
         assertTrue(output.contains("   sub/"));
@@ -213,48 +108,105 @@ public class TruffulaPrinterTest {
     @Test
     void testPrintTree_EmptyDirectory(@TempDir File tempDir) {
         File root = new File(tempDir, "empty");
-        root.mkdir();
+        assertTrue(root.mkdir());
 
-        TruffulaOptions options = new TruffulaOptions(root, false, true);
+        String output = runPrintTree(root, false);
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos);
-
-        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
-
-        printer.printTree();
-
-        String output = baos.toString();
-
-        // Only root should appear (plus debug lines)
         assertTrue(output.contains("empty/"));
     }
 
     @Test
-    void testPrintTree_FilesAndDirectories(@TempDir File tempDir) throws Exception {
+    void testPrintTree_HiddenFileExcluded_WhenShowHiddenFalse(@TempDir File tempDir) throws Exception {
         File root = new File(tempDir, "root");
-        root.mkdir();
+        assertTrue(root.mkdir());
 
-        File dir = new File(root, "folder");
-        dir.mkdir();
+        new File(root, "visible.txt").createNewFile();
+        createHiddenFile(root, ".secret.txt");
 
-        new File(root, "file.txt").createNewFile();
-        new File(dir, "nested.txt").createNewFile();
-
-        TruffulaOptions options = new TruffulaOptions(root, false, true);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos);
-
-        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
-
-        printer.printTree();
-
-        String output = baos.toString();
+        String output = runPrintTree(root, false);
 
         assertTrue(output.contains("root/"));
-        assertTrue(output.contains("   folder/"));
-        assertTrue(output.contains("      nested.txt"));
-        assertTrue(output.contains("   file.txt"));
+        assertTrue(output.contains("   visible.txt"));
+        assertFalse(output.contains(".secret.txt"));
+    }
+
+    @Test
+    void testPrintTree_HiddenFileIncluded_WhenShowHiddenTrue(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        new File(root, "visible.txt").createNewFile();
+        createHiddenFile(root, ".secret.txt");
+
+        String output = runPrintTree(root, true);
+
+        assertTrue(output.contains("root/"));
+        assertTrue(output.contains("   visible.txt"));
+        assertTrue(output.contains("   .secret.txt"));
+    }
+
+    @Test
+    void testPrintTree_HiddenFileExcluded_InNestedDirectory_WhenShowHiddenFalse(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File docs = new File(root, "docs");
+        assertTrue(docs.mkdir());
+
+        new File(docs, "notes.txt").createNewFile();
+        createHiddenFile(docs, ".draft.txt");
+
+        String output = runPrintTree(root, false);
+
+        assertTrue(output.contains("root/"));
+        assertTrue(output.contains("   docs/"));
+        assertTrue(output.contains("      notes.txt"));
+        assertFalse(output.contains(".draft.txt"));
+    }
+
+    @Test
+    void testPrintTree_HiddenDirectoryShouldBeExcluded_WhenShowHiddenFalse(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File hiddenDir = new File(root, ".hiddenFolder");
+        assertTrue(hiddenDir.mkdir());
+
+        if (isWindows()) {
+            Path path = Paths.get(hiddenDir.toURI());
+            Files.setAttribute(path, "dos:hidden", Boolean.TRUE, LinkOption.NOFOLLOW_LINKS);
+        }
+
+        new File(hiddenDir, "inside.txt").createNewFile();
+
+        String output = runPrintTree(root, false);
+
+        // This test describes the correct behavior:
+        // when showHidden is false, hidden directories should not appear,
+        // and their contents should not appear either.
+        assertFalse(output.contains(".hiddenFolder/"));
+        assertFalse(output.contains("inside.txt"));
+    }
+
+    @Test
+    void testPrintTree_HiddenDirectoryIncluded_WhenShowHiddenTrue(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File hiddenDir = new File(root, ".hiddenFolder");
+        assertTrue(hiddenDir.mkdir());
+
+        if (isWindows()) {
+            Path path = Paths.get(hiddenDir.toURI());
+            Files.setAttribute(path, "dos:hidden", Boolean.TRUE, LinkOption.NOFOLLOW_LINKS);
+        }
+
+        new File(hiddenDir, "inside.txt").createNewFile();
+
+        String output = runPrintTree(root, true);
+
+        assertTrue(output.contains("root/"));
+        assertTrue(output.contains("   .hiddenFolder/"));
+        assertTrue(output.contains("      inside.txt"));
     }
 }

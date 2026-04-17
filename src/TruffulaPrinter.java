@@ -136,6 +136,7 @@ public class TruffulaPrinter {
         // Recursive call with more spacing
         printTreeHelper(file, spacing + "   ", finalStr);
       } else {
+        if (file.isHidden() && !options.isShowHidden()) continue;
         finalStr.append(spacing).append(file.getName()).append("\n");
       }
     }

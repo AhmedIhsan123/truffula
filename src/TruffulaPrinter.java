@@ -1,3 +1,4 @@
+import java.io.Console;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.List;
@@ -104,40 +105,35 @@ public class TruffulaPrinter {
    *    zebra.txt
    */
   public void printTree() {
-    // TODO: Implement this!
-    // REQUIRED: ONLY use java.io, DO NOT use java.nio
-    StringBuilder finalStr = new StringBuilder();
     File root = options.getRoot();
+    if (root == null) return;
 
-    // Print root
-    finalStr.append(root.getName()).append("/").append("\n");
-
-    // Start recursion
-    printTreeHelper(root, "   ", finalStr);
-
-    System.out.print(finalStr.toString());
-    
-    // Hints:
-    // - Add a recursive helper method
-    // - For Wave 6: Use AlphabeticalFileSorter
-    // DO NOT USE SYSTEM.OUT.PRINTLN
-    // USE out.println instead (will use your ColorPrinter)
-    out.println(finalStr.toString());
-    out.println("printTree was called!");
-    out.println("My options are: " + options);
+    out.print(root.getName() + "/" + "\n");
+    printTreeHelper(root, "   ", 0);
   }
 
-  private void printTreeHelper(File dir, String spacing, StringBuilder finalStr) {
-    File[] files = dir.listFiles();
+  private void printTreeHelper(File currentFile, String spacing, int level) {
+    if (currentFile == null) return;
+
+    File[] files = currentFile.listFiles();
     if (files == null) return;
+
+    AlphabeticalFileSorter.sort(files);
+
     for (File file : files) {
+      if (file.isHidden() && !options.isShowHidden()) {
+        continue;
+      }
+
+      if (options.isUseColor()) {
+        out.setCurrentColor(colorSequence.get(level % colorSequence.size()));
+      }
+
       if (file.isDirectory()) {
-        finalStr.append(spacing).append(file.getName()).append("/").append("\n");
-        // Recursive call with more spacing
-        printTreeHelper(file, spacing + "   ", finalStr);
+        out.print(spacing + file.getName() + "/" + "\n");
+        printTreeHelper(file, spacing + "   ", level + 1);
       } else {
-        if (file.isHidden() && !options.isShowHidden()) continue;
-        finalStr.append(spacing).append(file.getName()).append("\n");
+        out.print(spacing + file.getName() + "\n");
       }
     }
   }

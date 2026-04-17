@@ -10,6 +10,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -208,5 +209,150 @@ public class TruffulaPrinterTest {
         assertTrue(output.contains("root/"));
         assertTrue(output.contains("   .hiddenFolder/"));
         assertTrue(output.contains("      inside.txt"));
+    }
+
+    @Test
+    void testPrintTree_ChildrenOfRoot_UseSameFirstLevelColor(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        new File(root, "a.txt").createNewFile();
+        new File(root, "b.txt").createNewFile();
+
+        String output = runPrintTree(root, false);
+
+        String expected =
+                ConsoleColor.WHITE + "root/\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   a.txt\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   b.txt\n" + ConsoleColor.RESET;
+
+        assertEquals(expected, output);
+    }
+
+    @Test
+    void testPrintTree_SecondLevelEntries_UseSecondColor(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File docs = new File(root, "docs");
+        assertTrue(docs.mkdir());
+
+        new File(docs, "a.txt").createNewFile();
+        new File(docs, "b.txt").createNewFile();
+
+        String output = runPrintTree(root, false);
+
+        String expected =
+                ConsoleColor.WHITE + "root/\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   docs/\n" + ConsoleColor.RESET +
+                ConsoleColor.PURPLE + "      a.txt\n" + ConsoleColor.RESET +
+                ConsoleColor.PURPLE + "      b.txt\n" + ConsoleColor.RESET;
+
+        assertEquals(expected, output);
+    }
+
+    @Test
+    void testPrintTree_ThirdLevelEntries_UseThirdColor(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File docs = new File(root, "docs");
+        assertTrue(docs.mkdir());
+
+        File images = new File(docs, "images");
+        assertTrue(images.mkdir());
+
+        new File(images, "Cat.png").createNewFile();
+        new File(images, "Dog.png").createNewFile();
+
+        String output = runPrintTree(root, false);
+
+        String expected =
+                ConsoleColor.WHITE + "root/\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   docs/\n" + ConsoleColor.RESET +
+                ConsoleColor.PURPLE + "      images/\n" + ConsoleColor.RESET +
+                ConsoleColor.YELLOW + "         Cat.png\n" + ConsoleColor.RESET +
+                ConsoleColor.YELLOW + "         Dog.png\n" + ConsoleColor.RESET;
+
+        assertEquals(expected, output);
+    }
+
+    @Test
+    void testPrintTree_ColorSequenceWrapsByDirectoryLevel(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File level1 = new File(root, "level1");
+        assertTrue(level1.mkdir());
+
+        File level2 = new File(level1, "level2");
+        assertTrue(level2.mkdir());
+
+        File level3 = new File(level2, "level3");
+        assertTrue(level3.mkdir());
+
+        new File(level3, "deep.txt").createNewFile();
+
+        String output = runPrintTree(root, false);
+
+        String expected =
+                ConsoleColor.WHITE + "root/\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   level1/\n" + ConsoleColor.RESET +
+                ConsoleColor.PURPLE + "      level2/\n" + ConsoleColor.RESET +
+                ConsoleColor.YELLOW + "         level3/\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "            deep.txt\n" + ConsoleColor.RESET;
+
+        assertEquals(expected, output);
+    }
+
+    @Test
+    void testPrintTree_SiblingsAtSameDepth_HaveSameColor(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File alpha = new File(root, "alpha");
+        File beta = new File(root, "beta");
+        assertTrue(alpha.mkdir());
+        assertTrue(beta.mkdir());
+
+        new File(alpha, "a.txt").createNewFile();
+        new File(beta, "b.txt").createNewFile();
+
+        String output = runPrintTree(root, false);
+
+        String expected =
+                ConsoleColor.WHITE + "root/\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   alpha/\n" + ConsoleColor.RESET +
+                ConsoleColor.PURPLE + "      a.txt\n" + ConsoleColor.RESET +
+                ConsoleColor.WHITE + "   beta/\n" + ConsoleColor.RESET +
+                ConsoleColor.PURPLE + "      b.txt\n" + ConsoleColor.RESET;
+
+        assertEquals(expected, output);
+    }
+
+    @Test
+    void testPrintTree_WhenColorDisabled_AllOutputUsesDefaultPrinterBehavior(@TempDir File tempDir) throws Exception {
+        File root = new File(tempDir, "root");
+        assertTrue(root.mkdir());
+
+        File docs = new File(root, "docs");
+        assertTrue(docs.mkdir());
+        new File(docs, "notes.txt").createNewFile();
+
+        TruffulaOptions options = new TruffulaOptions(root, false, false);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        TruffulaPrinter printer = new TruffulaPrinter(options, ps);
+
+        printer.printTree();
+
+        String output = baos.toString();
+
+        String expected =
+                ConsoleColor.WHITE + "root/\n" + ConsoleColor.RESET +
+                ConsoleColor.RESET + "   docs/\n" + ConsoleColor.RESET +
+                ConsoleColor.RESET + "      notes.txt\n" + ConsoleColor.RESET;
+
+        assertEquals(expected, output);
     }
 }
